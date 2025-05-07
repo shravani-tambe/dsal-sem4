@@ -23,7 +23,7 @@ void insert() {
         num++;
 
         cout << "Enter the information of the Employee.\n";
-        cin.ignore(); // clear newline before getline
+        cin.ignore(); 
 
         cout << "Name: ";
         getline(cin, emp[i].name);
