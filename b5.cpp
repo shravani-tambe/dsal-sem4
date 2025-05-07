@@ -1,119 +1,124 @@
 #include <iostream>
 #include <cstdlib>
-#include <string.h>
+#include <cstring>
 using namespace std;
 
-struct node
-{
+struct node {
     char label[30];
     int ch_count;
     int sb_count;
-    struct node *child[30];
-} *root;
+    node* child[30];
 
-class BST
-{
-public:
-    void create_tree();
-    void display(node *r1);
-
-    BST()
-    {
-        root = NULL;
+    node() {
+        ch_count = 0;
+        sb_count = 0;
+        for (int i = 0; i < 30; i++) {
+            child[i] = NULL;
+        }
     }
 };
 
-void BST::create_tree()
-{
-    int tbooks, tchapters, i, j, k;
+class BST {
+    node* root;
+
+public:
+    BST() {
+        root = NULL;
+    }
+
+    void create_tree();
+    void display();
+
+private:
+    void display_helper(node* r1);
+};
+
+void BST::create_tree() {
+    int tchapters;
     root = new node();
-    cout << "Enter Name of Book : ";
+    cout << "Enter Name of Book: ";
     cin >> root->label;
-    cout << "Enter no. of Chapters in Book: ";
+
+    cout << "Enter number of Chapters in Book: ";
     cin >> tchapters;
     root->ch_count = tchapters;
 
-    for (i = 0; i < tchapters; i++)
-    {
-        root->child[i] = new node;
+    for (int i = 0; i < tchapters; i++) {
+        root->child[i] = new node();
         cout << "\nEnter Chapter " << i + 1 << " Name: ";
         cin >> root->child[i]->label;
-        cout << "Enter no. of Sections in Chapter " << root->child[i]->label << ": ";
+
+        cout << "Enter number of Sections in Chapter " << root->child[i]->label << ": ";
         cin >> root->child[i]->ch_count;
 
-        for (j = 0; j < root->child[i]->ch_count; j++)
-        {
-            root->child[i]->child[j] = new node;
-            cout << "\nEnter Section " << j + 1 << " name: ";
+        for (int j = 0; j < root->child[i]->ch_count; j++) {
+            root->child[i]->child[j] = new node();
+            cout << "Enter Section " << j + 1 << " Name: ";
             cin >> root->child[i]->child[j]->label;
-            cout << "Enter no. of subsections in Section " << root->child[i]->child[j]->label << ": ";
+
+            cout << "Enter number of Subsections in Section " << root->child[i]->child[j]->label << ": ";
             cin >> root->child[i]->child[j]->sb_count;
 
-            for (k = 0; k < root->child[i]->child[j]->sb_count; k++)
-            {
-                root->child[i]->child[j]->child[k] = new node;
-                cout << "\nEnter Subsection " << k + 1 << " name: ";
+            for (int k = 0; k < root->child[i]->child[j]->sb_count; k++) {
+                root->child[i]->child[j]->child[k] = new node();
+                cout << "Enter Subsection " << k + 1 << " Name: ";
                 cin >> root->child[i]->child[j]->child[k]->label;
             }
         }
     }
 }
 
-void BST::display(node *r1)
-{
-    int i, j, k, tchapters;
-    if (r1 != NULL)
-    {
-        cout << "\n-----Book-----\n";
-        cout << "BOOK TITLE: " << r1->label;
-        cout << "\n*** CHAPTERS ***" << endl;
-        tchapters = r1->ch_count;
+void BST::display() {
+    if (root == NULL) {
+        cout << "\nBook tree is empty. Create it first.\n";
+        return;
+    }
 
-        for (i = 0; i < tchapters; i++)
-        {
-            cout << "\n"
-                 << i + 1 << ". " << r1->child[i]->label;
+    cout << "\n----- BOOK STRUCTURE -----\n";
+    cout << "BOOK TITLE: " << root->label << endl;
+    display_helper(root);
+}
 
-            for (j = 0; j < r1->child[i]->ch_count; j++)
-            {
-                cout << "\n\t" << i + 1 << "." << j + 1 << ". " << r1->child[i]->child[j]->label;
+void BST::display_helper(node* r1) {
+    for (int i = 0; i < r1->ch_count; i++) {
+        cout << "\n  Chapter " << i + 1 << ": " << r1->child[i]->label;
 
-                for (k = 0; k < r1->child[i]->child[j]->sb_count; k++)
-                {
-                    cout << "\n\t\t" << i + 1 << "." << j + 1 << "." << k + 1 << ". " << r1->child[i]->child[j]->child[k]->label;
-                }
+        for (int j = 0; j < r1->child[i]->ch_count; j++) {
+            cout << "\n    Section " << i + 1 << "." << j + 1 << ": " << r1->child[i]->child[j]->label;
+
+            for (int k = 0; k < r1->child[i]->child[j]->sb_count; k++) {
+                cout << "\n      Subsection " << i + 1 << "." << j + 1 << "." << k + 1 << ": " << r1->child[i]->child[j]->child[k]->label;
             }
         }
     }
 }
 
-int main()
-{
+int main() {
     int choice;
     BST bst;
-    while (1)
-    {
-        cout << "\n-----------------" << endl;
-        cout << "Book Tree Creation" << endl;
-        cout << "-----------------" << endl;
-        cout << "1.Create" << endl;
-        cout << "2.Display" << endl;
-        cout << "3.Quit" << endl;
-        cout << "Enter your choice : ";
+
+    while (true) {
+        cout << "\n---------------------------" << endl;
+        cout << " Book Tree Creation System " << endl;
+        cout << "---------------------------" << endl;
+        cout << "1. Create Tree" << endl;
+        cout << "2. Display Tree" << endl;
+        cout << "3. Quit" << endl;
+        cout << "Enter your choice: ";
         cin >> choice;
 
-        switch (choice)
-        {
+        switch (choice) {
         case 1:
             bst.create_tree();
             break;
         case 2:
-            bst.display(root);
+            bst.display();
             break;
         case 3:
-            exit(1);
+            cout << "Exiting... Goodbye!\n";
+            exit(0);
         default:
-            cout << "\nWrong Choice!" << endl;
+            cout << "Invalid choice. Try again.\n";
         }
     }
 }
