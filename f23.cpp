@@ -1,6 +1,6 @@
 /*student management system using index sequential files*/ 
 
-##include <iostream>
+#include <iostream>
 #include <fstream>
 #include <vector>
 #include <algorithm>
