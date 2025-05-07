@@ -1,6 +1,7 @@
 /*exp f24 : employee management system using index sequential file*/
 
-#include <bits/stdc++.h>
+#include <iostream>
+#include <string>
 using namespace std;
 
 const int MAX_EMPLOYEES = 20;
@@ -22,15 +23,17 @@ void insert() {
         num++;
 
         cout << "Enter the information of the Employee.\n";
+        cin.ignore(); // clear newline before getline
 
         cout << "Name: ";
-        cin >> emp[i].name;  // Only allows one-word names
+        getline(cin, emp[i].name);
 
         cout << "Employee ID: ";
         cin >> emp[i].code;
+        cin.ignore();
 
         cout << "Designation: ";
-        cin >> emp[i].designation;
+        getline(cin, emp[i].designation);
 
         cout << "Experience: ";
         cin >> emp[i].exp;
@@ -45,7 +48,6 @@ void insert() {
 }
 
 void deleteIndex(int i) {
-    if (i < 0 || i >= num) return; // safety check
     for (int j = i; j < num - 1; j++) {
         emp[j] = emp[j + 1];
     }
@@ -110,15 +112,9 @@ int main() {
         cin >> option;
 
         switch (option) {
-            case 1:
-                insert();
-                break;
-            case 2:
-                deleteRecord();
-                break;
-            case 3:
-                searchRecord();
-                break;
+            case 1: insert(); break;
+            case 2: deleteRecord(); break;
+            case 3: searchRecord(); break;
             case 4:
                 cout << "Exiting Employee Management System.\n";
                 return 0;
