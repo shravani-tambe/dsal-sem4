@@ -1,3 +1,5 @@
+/*book consists of chapters, chapters of sections and sections of subsections. construct a tree and print the nodes. find tc nd sc*/
+
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
