@@ -1,118 +1,163 @@
-/*exp f24 : employee management system using index sequential file*/
+/* index sequential file organization for employee management system */
 
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <algorithm>
-using namespace std;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct Employee {
-    long code;
-    char name[50];
-    char designation[30];
-    int exp;
-    int age;
-};
+#define EMP_FILE   "EMP.DAT"
+#define INDEX_FILE "INDEX.DAT"
 
-struct IndexEntry {
-    long code;
-    long position;
-};
+typedef struct {
+    int id;
+    char name[30];
+    char desig[20];
+    float salary;
+} Employee;
 
-void writeEmployee(Employee &e) {
-    ofstream empFile("employee.dat", ios::binary | ios::app);
-    long pos = empFile.tellp();
-    empFile.write(reinterpret_cast<char*>(&e), sizeof(Employee));
-    empFile.close();
+typedef struct {
+    int id;
+    long offset;
+} IndexEntry;
 
-    ofstream idxFile("index.dat", ios::binary | ios::app);
-    idxFile.write(reinterpret_cast<char*>(&e.code), sizeof(e.code));
-    idxFile.write(reinterpret_cast<char*>(&pos), sizeof(pos));
-    idxFile.close();
-}
+void buildIndex() {
+    FILE *df = fopen(EMP_FILE, "rb");
+    FILE *ix = fopen(INDEX_FILE, "wb");
+    if (!df || !ix) { perror("Open"); return; }
 
-vector<IndexEntry> loadIndex() {
-    vector<IndexEntry> index;
-    ifstream idxFile("index.dat", ios::binary);
-    IndexEntry entry;
-    while (idxFile.read(reinterpret_cast<char*>(&entry.code), sizeof(entry.code))) {
-        idxFile.read(reinterpret_cast<char*>(&entry.position), sizeof(entry.position));
-        index.push_back(entry);
-    }
-    idxFile.close();
-    sort(index.begin(), index.end(), [](IndexEntry a, IndexEntry b) {
-        return a.code < b.code;
-    });
-    return index;
-}
-
-void searchEmployee(long code) {
-    vector<IndexEntry> index = loadIndex();
-    auto it = find_if(index.begin(), index.end(), [code](IndexEntry e) {
-        return e.code == code;
-    });
-
-    if (it != index.end()) {
-        ifstream empFile("employee.dat", ios::binary);
-        empFile.seekg(it->position);
-        Employee e;
-        empFile.read(reinterpret_cast<char*>(&e), sizeof(Employee));
-        empFile.close();
-
-        cout << "Employee found:\n";
-        cout << "Code: " << e.code << "\n";
-        cout << "Name: " << e.name << "\n";
-        cout << "Designation: " << e.designation << "\n";
-        cout << "Experience: " << e.exp << "\n";
-        cout << "Age: " << e.age << "\n";
-    } else {
-        cout << "Employee not found.\n";
-    }
-}
-
-void insertEmployee() {
     Employee e;
-    cout << "Enter Code: "; cin >> e.code;
-    cin.ignore();
-    cout << "Enter Name: "; cin.getline(e.name, 50);
-    cout << "Enter Designation: "; cin.getline(e.designation, 30);
-    cout << "Enter Experience: "; cin >> e.exp;
-    cout << "Enter Age: "; cin >> e.age;
+    long pos;
+    while ((pos = ftell(df)), fread(&e, sizeof(e), 1, df) == 1) {
+        IndexEntry ie = { e.id, pos };
+        fwrite(&ie, sizeof(ie), 1, ix);
+    }
+    fclose(df); fclose(ix);
 
-    writeEmployee(e);
-    cout << "Employee inserted successfully.\n";
+    // sort index
+    ix = fopen(INDEX_FILE, "rb+");
+    fseek(ix, 0, SEEK_END);
+    int n = ftell(ix) / sizeof(IndexEntry);
+    rewind(ix);
+    IndexEntry *arr = malloc(n * sizeof(IndexEntry));
+    fread(arr, sizeof(IndexEntry), n, ix);
+    for (int i = 0; i < n-1; ++i)
+      for (int j = 0; j < n-1-i; ++j)
+        if (arr[j].id > arr[j+1].id) {
+          IndexEntry tmp = arr[j];
+          arr[j] = arr[j+1];
+          arr[j+1] = tmp;
+        }
+    rewind(ix);
+    fwrite(arr, sizeof(IndexEntry), n, ix);
+    free(arr);
+    fclose(ix);
 }
 
-void menu() {
-    while (true) {
-        cout << "\nEmployee Management System\n";
-        cout << "1. Insert Employee\n";
-        cout << "2. Search Employee\n";
-        cout << "3. Exit\n";
-        cout << "Choose an option: ";
-        int choice;
-        cin >> choice;
+void addEmployee() {
+    Employee e;
+    printf("ID        : "); scanf("%d", &e.id);
+    printf("Name      : "); scanf(" %[^\n]", e.name);
+    printf("Designation: "); scanf(" %[^\n]", e.desig);
+    printf("Salary    : "); scanf("%f", &e.salary);
 
-        switch (choice) {
-            case 1:
-                insertEmployee();
-                break;
-            case 2:
-                long code;
-                cout << "Enter Employee Code to Search: ";
-                cin >> code;
-                searchEmployee(code);
-                break;
-            case 3:
-                cout << "Exiting...\n";
-                return;
-            default:
-                cout << "Invalid option.\n";
-        }
+    FILE *df = fopen(EMP_FILE, "ab");
+    if (!df) { perror("Open"); return; }
+    fwrite(&e, sizeof(e), 1, df);
+    fclose(df);
+
+    buildIndex();
+    printf("Employee added.\n");
+}
+
+void deleteEmployee() {
+    int key, found=0;
+    printf("Enter ID to delete: "); scanf("%d", &key);
+
+    FILE *df = fopen(EMP_FILE, "rb");
+    FILE *tmp = fopen("TMP.DAT", "wb");
+    if (!df || !tmp) { perror("Open"); return; }
+
+    Employee e;
+    while (fread(&e, sizeof(e), 1, df)) {
+        if (e.id == key) found = 1;
+        else fwrite(&e, sizeof(e), 1, tmp);
     }
+    fclose(df); fclose(tmp);
+
+    if (found) {
+        remove(EMP_FILE);
+        rename("TMP.DAT", EMP_FILE);
+        buildIndex();
+        printf("Deleted ID %d.\n", key);
+    } else {
+        remove("TMP.DAT");
+        printf("ID %d not found.\n", key);
+    }
+}
+
+void displayEmployee() {
+    int key;
+    printf("Enter ID to display: "); scanf("%d", &key);
+
+    FILE *ix = fopen(INDEX_FILE, "rb");
+    if (!ix) {
+        printf("Index missing. Rebuilding...\n");
+        buildIndex();
+        ix = fopen(INDEX_FILE, "rb");
+    }
+
+    // load index into memory
+    fseek(ix, 0, SEEK_END);
+    int n = ftell(ix) / sizeof(IndexEntry);
+    rewind(ix);
+    IndexEntry *arr = malloc(n * sizeof(IndexEntry));
+    fread(arr, sizeof(IndexEntry), n, ix);
+    fclose(ix);
+
+    // binary search
+    int lo = 0, hi = n - 1, found = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (arr[mid].id == key) {
+            FILE *df = fopen(EMP_FILE, "rb");
+            fseek(df, arr[mid].offset, SEEK_SET);
+            Employee e;
+            fread(&e, sizeof(e), 1, df);
+            fclose(df);
+
+            printf("\nID        : %d\n", e.id);
+            printf("Name      : %s\n", e.name);
+            printf("Designation: %s\n", e.desig);
+            printf("Salary    : %.2f\n", e.salary);
+            found = 1;
+            break;
+        }
+        else if (arr[mid].id < key) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    free(arr);
+
+    if (!found)
+        printf("ID %d not found.\n", key);
 }
 
 int main() {
-    menu();
+    int ch;
+    do {
+        printf("\n=== Employee Index-Sequential ===\n");
+        printf("1. Build Index\n");
+        printf("2. Add Employee\n");
+        printf("3. Delete Employee\n");
+        printf("4. Display Employee\n");
+        printf("5. Exit\n");
+        printf("Choice: "); scanf("%d", &ch);
+        switch (ch) {
+            case 1: buildIndex();      break;
+            case 2: addEmployee();     break;
+            case 3: deleteEmployee();  break;
+            case 4: displayEmployee(); break;
+            case 5: printf("Done.\n"); break;
+            default: printf("Invalid.\n");
+        }
+    } while (ch != 5);
     return 0;
 }
