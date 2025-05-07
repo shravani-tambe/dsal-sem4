@@ -5,47 +5,45 @@ The node can be represented by the airport name or name of the city. Use adjacen
 */
 
 #include <iostream>
+#include <vector>
+#include <string>
 using namespace std;
 
 int main()
 {
     int n;
-    cout<<"Enter No. of cities";
-    cin>>n;
-    string cities[n];
-    int adj[n][n] = {0,0};
-    for(int i = 0; i<n; i++)
-    {
-        cout<<"Enter City Name "<<i<<endl;
-        cin>>cities[i];
+    cout << "Enter number of cities: ";
+    cin >> n;
+    cin.ignore();
+
+    vector<string> cities(n);
+    vector<vector<int>> adj(n, vector<int>(n, 0));
+
+    for (int i = 0; i < n; i++) {
+        cout << "Enter name of City " << i + 1 << ": ";
+        getline(cin, cities[i]);
     }
 
-    for(int i = 0; i<n; i++)
-    {
-        for(int j = i+1; j<n; j++)
-        {
-            cout<<"Enter Distance Between "<<cities[i]<<" and "<<cities[j]<<endl;
-            cin>>adj[i][j];
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            cout << "Enter distance between " << cities[i] << " and " << cities[j] << ": ";
+            cin >> adj[i][j];
             adj[j][i] = adj[i][j];
         }
     }
 
-    //display
-    cout<<endl;
-    for(auto i : cities)
-    {
-        cout<<"\t"<<i<<"\t";
+    cout << "\nAdjacency Matrix:\n\t";
+    for (const auto& city : cities) {
+        cout << city << "\t";
     }
-    cout<<endl;
-    for (int i = 0; i < n; i++)
-    {
-        cout<<cities[i]<<"\t";
-        for (int j = 0; j < n; j++)
-        {
-            cout<<"\t"<<adj[i][j]<<"\t";
+    cout << endl;
+    for (int i = 0; i < n; i++) {
+        cout << cities[i] << "\t";
+        for (int j = 0; j < n; j++) {
+            cout << adj[i][j] << "\t";
         }
-        cout<<endl;
+        cout << endl;
     }
-    
+
     return 0;
 }
