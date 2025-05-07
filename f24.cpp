@@ -1,127 +1,118 @@
 /*exp f24 : employee management system using index sequential file*/
 
 #include <iostream>
-#include <string>
+#include <fstream>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
-const int MAX_EMPLOYEES = 20;
-
-struct employee {
-    string name;
-    long int code;
-    string designation;
+struct Employee {
+    long code;
+    char name[50];
+    char designation[30];
     int exp;
     int age;
 };
 
-employee emp[MAX_EMPLOYEES];
-int num = 0;
+struct IndexEntry {
+    long code;
+    long position;
+};
 
-void insert() {
-    if (num < MAX_EMPLOYEES) {
-        int i = num;
-        num++;
+void writeEmployee(Employee &e) {
+    ofstream empFile("employee.dat", ios::binary | ios::app);
+    long pos = empFile.tellp();
+    empFile.write(reinterpret_cast<char*>(&e), sizeof(Employee));
+    empFile.close();
 
-        cout << "Enter the information of the Employee.\n";
-        cin.ignore(); 
+    ofstream idxFile("index.dat", ios::binary | ios::app);
+    idxFile.write(reinterpret_cast<char*>(&e.code), sizeof(e.code));
+    idxFile.write(reinterpret_cast<char*>(&pos), sizeof(pos));
+    idxFile.close();
+}
 
-        cout << "Name: ";
-        getline(cin, emp[i].name);
+vector<IndexEntry> loadIndex() {
+    vector<IndexEntry> index;
+    ifstream idxFile("index.dat", ios::binary);
+    IndexEntry entry;
+    while (idxFile.read(reinterpret_cast<char*>(&entry.code), sizeof(entry.code))) {
+        idxFile.read(reinterpret_cast<char*>(&entry.position), sizeof(entry.position));
+        index.push_back(entry);
+    }
+    idxFile.close();
+    sort(index.begin(), index.end(), [](IndexEntry a, IndexEntry b) {
+        return a.code < b.code;
+    });
+    return index;
+}
 
-        cout << "Employee ID: ";
-        cin >> emp[i].code;
-        cin.ignore();
+void searchEmployee(long code) {
+    vector<IndexEntry> index = loadIndex();
+    auto it = find_if(index.begin(), index.end(), [code](IndexEntry e) {
+        return e.code == code;
+    });
 
-        cout << "Designation: ";
-        getline(cin, emp[i].designation);
+    if (it != index.end()) {
+        ifstream empFile("employee.dat", ios::binary);
+        empFile.seekg(it->position);
+        Employee e;
+        empFile.read(reinterpret_cast<char*>(&e), sizeof(Employee));
+        empFile.close();
 
-        cout << "Experience: ";
-        cin >> emp[i].exp;
-
-        cout << "Age: ";
-        cin >> emp[i].age;
-
-        cout << "Employee added successfully!\n";
+        cout << "Employee found:\n";
+        cout << "Code: " << e.code << "\n";
+        cout << "Name: " << e.name << "\n";
+        cout << "Designation: " << e.designation << "\n";
+        cout << "Experience: " << e.exp << "\n";
+        cout << "Age: " << e.age << "\n";
     } else {
-        cout << "Employee list is full.\n";
+        cout << "Employee not found.\n";
     }
 }
 
-void deleteIndex(int i) {
-    for (int j = i; j < num - 1; j++) {
-        emp[j] = emp[j + 1];
-    }
+void insertEmployee() {
+    Employee e;
+    cout << "Enter Code: "; cin >> e.code;
+    cin.ignore();
+    cout << "Enter Name: "; cin.getline(e.name, 50);
+    cout << "Enter Designation: "; cin.getline(e.designation, 30);
+    cout << "Enter Experience: "; cin >> e.exp;
+    cout << "Enter Age: "; cin >> e.age;
+
+    writeEmployee(e);
+    cout << "Employee inserted successfully.\n";
 }
 
-void deleteRecord() {
-    cout << "Enter the Employee ID to delete: ";
-    long int code;
-    cin >> code;
+void menu() {
+    while (true) {
+        cout << "\nEmployee Management System\n";
+        cout << "1. Insert Employee\n";
+        cout << "2. Search Employee\n";
+        cout << "3. Exit\n";
+        cout << "Choose an option: ";
+        int choice;
+        cin >> choice;
 
-    bool found = false;
-    for (int i = 0; i < num; i++) {
-        if (emp[i].code == code) {
-            deleteIndex(i);
-            num--;
-            found = true;
-            cout << "Record deleted successfully.\n";
-            break;
+        switch (choice) {
+            case 1:
+                insertEmployee();
+                break;
+            case 2:
+                long code;
+                cout << "Enter Employee Code to Search: ";
+                cin >> code;
+                searchEmployee(code);
+                break;
+            case 3:
+                cout << "Exiting...\n";
+                return;
+            default:
+                cout << "Invalid option.\n";
         }
     }
-    if (!found) {
-        cout << "Employee ID not found.\n";
-    }
-}
-
-void searchRecord() {
-    cout << "Enter the Employee ID to search: ";
-    long int code;
-    cin >> code;
-
-    bool found = false;
-    for (int i = 0; i < num; i++) {
-        if (emp[i].code == code) {
-            cout << "Name: " << emp[i].name << "\n";
-            cout << "Employee ID: " << emp[i].code << "\n";
-            cout << "Designation: " << emp[i].designation << "\n";
-            cout << "Experience: " << emp[i].exp << "\n";
-            cout << "Age: " << emp[i].age << "\n";
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        cout << "Employee ID not found.\n";
-    }
-}
-
-void showMenu() {
-    cout << "\n------------------------- Employee Management System -------------------------\n";
-    cout << "Available Options:\n";
-    cout << "1. Insert New Entry\n";
-    cout << "2. Delete Entry\n";
-    cout << "3. Search a Record\n";
-    cout << "4. Exit\n";
-    cout << "Choose an option (1-4): ";
 }
 
 int main() {
-    while (true) {
-        showMenu();
-        int option;
-        cin >> option;
-
-        switch (option) {
-            case 1: insert(); break;
-            case 2: deleteRecord(); break;
-            case 3: searchRecord(); break;
-            case 4:
-                cout << "Exiting Employee Management System.\n";
-                return 0;
-            default:
-                cout << "Invalid option. Please enter a number between 1 and 4.\n";
-        }
-    }
-
+    menu();
     return 0;
 }
