@@ -1,158 +1,113 @@
 /*student management system using index sequential files*/ 
 
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <algorithm>
-#include <cstring>
-using namespace std;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct Student {
-    int rollNumber;
-    char name[50];
+#define STUD_FILE "STUD.DAT"
+
+typedef struct {
+    int roll;
+    char name[30];
     char division;
-    char address[100];
-};
+    char address[50];
+} Student;
 
-struct IndexEntry {
-    int rollNumber;
-    long position;
-};
-
-void writeIndex(int rollNumber, long pos) {
-    ofstream idxFile("index.dat", ios::binary | ios::app);
-    idxFile.write(reinterpret_cast<char*>(&rollNumber), sizeof(rollNumber));
-    idxFile.write(reinterpret_cast<char*>(&pos), sizeof(pos));
-    idxFile.close();
-}
-
-vector<IndexEntry> loadIndex() {
-    vector<IndexEntry> index;
-    ifstream idxFile("index.dat", ios::binary);
-    IndexEntry entry;
-    while (idxFile.read(reinterpret_cast<char*>(&entry.rollNumber), sizeof(entry.rollNumber))) {
-        idxFile.read(reinterpret_cast<char*>(&entry.position), sizeof(entry.position));
-        index.push_back(entry);
+void createFile() {
+    FILE *fp = fopen(STUD_FILE, "wb");
+    if (!fp) {
+        perror("Cannot create file");
+        return;
     }
-    idxFile.close();
-    sort(index.begin(), index.end(), [](IndexEntry a, IndexEntry b) {
-        return a.rollNumber < b.rollNumber;
-    });
-    return index;
+    fclose(fp);
+    printf("File created: %s\n", STUD_FILE);
 }
 
 void addStudent() {
-    Student student;
-    cout << "Enter Roll Number: ";
-    cin >> student.rollNumber;
-    cin.ignore();
-    cout << "Enter Name: ";
-    cin.getline(student.name, 50);
-    cout << "Enter Division: ";
-    cin >> student.division;
-    cin.ignore();
-    cout << "Enter Address: ";
-    cin.getline(student.address, 100);
+    Student s;
+    FILE *fp = fopen(STUD_FILE, "ab");
+    if (!fp) { perror("Open"); return; }
 
-    ofstream outFile("students.dat", ios::binary | ios::app);
-    long pos = outFile.tellp();
-    outFile.write(reinterpret_cast<char*>(&student), sizeof(Student));
-    outFile.close();
+    printf("Roll No    : "); scanf("%d", &s.roll);
+    printf("Name       : "); scanf(" %[^\n]", s.name);
+    printf("Division   : "); scanf(" %c", &s.division);
+    printf("Address    : "); scanf(" %[^\n]", s.address);
 
-    writeIndex(student.rollNumber, pos);
-    cout << "Student added successfully.\n";
+    fwrite(&s, sizeof(s), 1, fp);
+    fclose(fp);
+    printf("Record added.\n");
 }
 
-void displayStudent(int rollNumber) {
-    vector<IndexEntry> index = loadIndex();
-    auto it = find_if(index.begin(), index.end(), [rollNumber](IndexEntry e) {
-        return e.rollNumber == rollNumber;
-    });
+void deleteStudent() {
+    int key, found = 0;
+    printf("Enter Roll No to delete: "); scanf("%d", &key);
 
-    if (it != index.end()) {
-        ifstream inFile("students.dat", ios::binary);
-        inFile.seekg(it->position);
-        Student student;
-        inFile.read(reinterpret_cast<char*>(&student), sizeof(Student));
-        inFile.close();
+    FILE *fp = fopen(STUD_FILE, "rb");
+    FILE *tmp = fopen("TMP.DAT", "wb");
+    if (!fp || !tmp) { perror("Open"); return; }
 
-        cout << "\n--- Student Details ---\n";
-        cout << "Roll Number: " << student.rollNumber << "\n";
-        cout << "Name: " << student.name << "\n";
-        cout << "Division: " << student.division << "\n";
-        cout << "Address: " << student.address << "\n";
-    } else {
-        cout << "Student record not found.\n";
-    }
-}
-
-void deleteStudent(int rollNumber) {
-    vector<IndexEntry> index = loadIndex();
-    bool found = false;
-
-    ofstream tempData("temp.dat", ios::binary);
-    ofstream tempIndex("temp_idx.dat", ios::binary);
-    ifstream dataFile("students.dat", ios::binary);
-
-    Student student;
-    for (const auto& entry : index) {
-        dataFile.seekg(entry.position);
-        dataFile.read(reinterpret_cast<char*>(&student), sizeof(Student));
-        if (student.rollNumber != rollNumber) {
-            long newPos = tempData.tellp();
-            tempData.write(reinterpret_cast<char*>(&student), sizeof(Student));
-            tempIndex.write(reinterpret_cast<const char*>(&student.rollNumber), sizeof(student.rollNumber));
-            tempIndex.write(reinterpret_cast<const char*>(&newPos), sizeof(newPos));
+    Student s;
+    while (fread(&s, sizeof(s), 1, fp)) {
+        if (s.roll == key) {
+            found = 1;
         } else {
-            found = true;
+            fwrite(&s, sizeof(s), 1, tmp);
         }
     }
+    fclose(fp); fclose(tmp);
 
-    dataFile.close();
-    tempData.close();
-    tempIndex.close();
+    if (found) {
+        remove(STUD_FILE);
+        rename("TMP.DAT", STUD_FILE);
+        printf("Deleted roll %d.\n", key);
+    } else {
+        remove("TMP.DAT");
+        printf("Roll %d not found.\n", key);
+    }
+}
 
-    remove("students.dat");
-    remove("index.dat");
-    rename("temp.dat", "students.dat");
-    rename("temp_idx.dat", "index.dat");
+void displayStudent() {
+    int key, found = 0;
+    printf("Enter Roll No to display: "); scanf("%d", &key);
 
-    if (found)
-        cout << "Student record deleted successfully.\n";
-    else
-        cout << "Student record not found.\n";
+    FILE *fp = fopen(STUD_FILE, "rb");
+    if (!fp) { perror("Open"); return; }
+
+    Student s;
+    while (fread(&s, sizeof(s), 1, fp)) {
+        if (s.roll == key) {
+            printf("\nRoll     : %d\n", s.roll);
+            printf("Name     : %s\n", s.name);
+            printf("Division : %c\n", s.division);
+            printf("Address  : %s\n", s.address);
+            found = 1;
+            break;
+        }
+    }
+    fclose(fp);
+
+    if (!found)
+        printf("Roll %d not found.\n", key);
 }
 
 int main() {
-    int choice, rollNumber;
+    int choice;
     do {
-        cout << "\n----- Student Management System (ISF) -----\n";
-        cout << "1. Add Student\n";
-        cout << "2. Display Student\n";
-        cout << "3. Delete Student\n";
-        cout << "4. Exit\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
-
+        printf("\n=== Student Sequential File ===\n");
+        printf("1. Create File\n");
+        printf("2. Add Record\n");
+        printf("3. Delete Record\n");
+        printf("4. Display Record\n");
+        printf("5. Exit\n");
+        printf("Choice: "); scanf("%d", &choice);
         switch (choice) {
-            case 1: addStudent(); break;
-            case 2:
-                cout << "Enter Roll Number to display: ";
-                cin >> rollNumber;
-                displayStudent(rollNumber);
-                break;
-            case 3:
-                cout << "Enter Roll Number to delete: ";
-                cin >> rollNumber;
-                deleteStudent(rollNumber);
-                break;
-            case 4:
-                cout << "Exiting system...\n";
-                break;
-            default:
-                cout << "Invalid choice. Try again.\n";
+            case 1: createFile();    break;
+            case 2: addStudent();    break;
+            case 3: deleteStudent(); break;
+            case 4: displayStudent();break;
+            case 5: printf("Bye!\n"); break;
+            default: printf("Invalid.\n");
         }
-    } while (choice != 4);
-
+    } while (choice != 5);
     return 0;
 }
